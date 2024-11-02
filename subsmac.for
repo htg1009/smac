@@ -1,0 +1,474 @@
+      SUBROUTINE ACCEL (G,DU ,DV ,DPSI ,U ,V ,AXX ,AYY ,ACC )
+      AXX = (DU -V*DPSI)/G
+      AYY = (DV + U*DPSI)/G
+      ACC = SQRT(AXX**2 + AYY**2)
+      RETURN
+      END
+      SUBROUTINE SAVMAX (ARRXY ,ARRX ,ARRY ,ARRT ,ARRDV ,ARRPSI,NARRPS,
+     1            TM,TIMEP,AXX ,AYY ,ACC ,ACCP ,DELVS ,ACTST ,
+     2            ABIG ,AXBIG ,AYBIG ,TBIG ,NUM ,ISAVE ,IACDV ,
+     3            IPRTX,ISTOP)
+C      SIMULATION MODEL OF AUTOMOBILE COLLISIONS -SMAC
+C
+C         SAVES THE MAXIMA OF ACCELERATION CORRESPONDING TO IMPACT.
+C      SAVES THOSE MAXIMA WHICH ARE FOLLOWED BY RESULTANT ACCELERATION
+C      ACC = SQRT(AX1OU**2 + AY1OU**2) LESS THAN 1.G AND THEN FOLLOWED
+C      BY RESULTANT ACCELERATION GREATER THAN 1.G.
+C
+C      AT END OF RUN ARRANGE IN ORDER OF DECREASING MAXIMA,
+C      AND COMPUTE ANGLES AND INDICES FOR DIRECTION OF FORCE AT
+C      PRINCIPAL IMPACT.
+C      ALSO CONVERT ARRDV TO MPH FROM G*SEC
+C
+C      CALLS SUBROUTINE DELTAV,WHICH COMPUTES DELVS,ACTST,IACDV
+C
+      DIMENSION ARRXY(1),ARRX(1),ARRY(1),ARRT(1),ARRPSI(1),NARRPS(1)
+      DIMENSION ARRDV(1)
+      DATA TWOPI/6.2831853072/, PIO6/0.5235987756/
+C         SAMPLE CALL
+C     CALL SAVMAX (ARRXY1,ARRX1,ARRY1,ARRT1,ARRDV1,ARRPS1,NARRP1,
+C    1            TM,TIMEP,AXX1,AYY1,ACC1,ACCP1,DELVS1,ACTST1,
+C    2            ABIG1,AXBIG1,AYBIG1,TBIG1,NUM1,ISAV1 ,IACDV1,
+C    3            IPRTY,ISTOP)
+C
+C      USES AXX,AYY,ACC,TM,IPRTX. SUBROUTINE DELTAV ALSO USES ACCP,TIMEP
+C      RETURNS ABIG,AXBIG,AYBIG,TBIG,NUM,ISAVE
+C      AND ARRAYS ARRXY,ARRX,ARRY,ARRT,ARRDV,ARRPSI,NARRPS.
+C      RETURNS DELVS,ACTST,IACDV WHICH ARE COMPUTED IN SUBROUTINE DELTAV
+C       *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *
+C      CALLING PROGRAM MUST ZERO ISAVE, NUM, DELVS
+C      SET ABIG.LE.-1.E10 AND SET IPRTX.LE.1 BEFORE FIRST CALL TO SAVMAX
+C      ALSO SET TM=T0 AND TIMEP=T0 BEFORE FIRST CALL TO SAVMAX
+C       *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *
+      DATA CONVER/21.9546/
+C      CONVER CONVERTS ACCELERATION*SEC IN G*SEC TO MPH
+C     DELVS IS VELOCITY CHANGE OF PASSENGER COMPARTMENT DURING COLLISION
+C      DELVS IS COMPUTED IN SUBROUTINE DELTAV AND IS STORED IN ARRAY
+C      ARRDV IN SUBROUTINE SAVMAX TO CORRESPOND TO MAX ACCEL AND TO VDI
+C      AT END OF RUN,ARRDV IS CONVERTED TO MPH (DELVS IS G*SEC)
+C      IACDV =  1,2,3 FOR COMPARISON OF CONSISTENT DOMINANT COMPONENTS
+C      IN ACCELERATION FOR ACCUMULATING DELVS IN SUBROUTINE DELTAV
+C      IACDV=0 FOR ACC.LE.1.0,   IACDV=-10 FOR SUDDEN FLIP
+C      ACTST HAS VALUE PLUS OR MINUS ONE, OR ZERO,USED TO COMPARE
+C      DIRECTION OF ACCELERATION
+C
+C
+      CALL DELTAV (TM,TIMEP,AXX,AYY,ACC,ACCP,DELVS,ACTST,IACDV,ABIG)
+      IF(IACDV + 10)  9,26, 9
+    9 IF(ISAVE) 15,10,15
+   10 IF(ACC  - ABIG) 15,15,11
+   11 IF(ACC - 1.0) 30,30,13
+   13 ABIG = ACC
+      AXBIG = AXX
+      AYBIG = AYY
+      TBIG = TM
+      GO TO 30
+   15 IF(ACC - 1.0) 18,18,25
+C      ISAVE = 1 FOR FIRST OCCURRENCE OF RESULTANT .LE. 1.G AFTER MAX.
+C      ISAVE = 0 INDICATES RESULTANT .LE. 1.G NOT YET DETECTED AFTER MAX
+   18 IF(ISAVE) 30,19,30
+   19 ISAVE = 1
+      GO TO 30
+   25 IF(ISAVE) 26,30,26
+   26 NUM = NUM + 1
+C
+      IF(NUM - 10) 28,28,27
+   27 WRITE(6,6127) TM,TBIG,NUM
+ 6127 FORMAT(10H0 AT TIME=,E14.6,23H EXAMINE MAX FOR TIME =,E14.6 /
+     1 5X,12HBECAUSE NUM=,I3,16H RESET NUM TO 10)
+      NUM = 10
+      GO TO 37
+C
+   28 ARRXY(NUM) = ABIG
+      ARRX(NUM) = AXBIG
+      ARRY(NUM) = AYBIG
+      ARRT(NUM) = TBIG
+      ARRDV(NUM) = DELVS
+   29 ABIG = ACC
+      AXBIG = AXX
+      AYBIG = AYY
+      TBIG = TM
+      DELVS = 0.0
+      CALL DELTAV (TM,TIMEP,AXX,AYY,ACC,ACCP,DELVS,ACTST,IACDV,ABIG)
+      ISAVE = 0
+C
+   30 IF(IPRTX -2) 31,33,33
+   31 RETURN
+C
+   33 IF(NUM) 26,26,34
+   34 IF(ISAVE) 26,35,26
+   35 IF(NUM - 1) 48,48,37
+   37 IB = 1
+   38 ABIGA= -1.E10
+      IBIG = 0
+      DO 40 I=IB,NUM
+      AA = ARRXY(I)
+      IF(AA -ABIGA) 40,40,39
+   39 ABIGA = AA
+      IBIG = I
+   40 CONTINUE
+      IF(IB - IBIG) 42,45,41
+   41 ISTOP = 5
+      WRITE(6,6141) ISTOP
+ 6141 FORMAT( 9H0  ISTOP=,I3,21H IN SUBROUTINE SAVMAX)
+      RETURN
+   42 ASAV = ARRXY(IB)
+      ARRXY(IB) = ABIGA
+      ARRXY(IBIG) = ASAV
+      XSAV = ARRX(IB)
+      YSAV = ARRY(IB)
+      TSAV = ARRT(IB)
+      DLVSAV = ARRDV(IB)
+      ARRX(IB) = ARRX(IBIG)
+      ARRY(IB) = ARRY(IBIG)
+      ARRT(IB) = ARRT(IBIG)
+      ARRDV(IB) = ARRDV(IBIG)
+      ARRX(IBIG) = XSAV
+      ARRY(IBIG) = YSAV
+      ARRT(IBIG) = TSAV
+      ARRDV(IBIG) = DLVSAV
+   45 IB = IB + 1
+      IF(IB - NUM) 38,46,46
+   46 IF(IPRTX - 2) 47,48,48
+C
+   47 IF(ARRXY(NUM) - ABIG) 470,29,29
+  470 WRITE(6,6127) TM,TBIG,NUM
+      WRITE(6,6471) ABIG,ARRXY(NUM)
+ 6471 FORMAT(16H0 NEW MAX, ABIG=,E14.6, 50H, IS GREATER THAN SMALLEST PR
+     1EVIOUS MAX,ARRXY(10)=,E14.6/
+     2 5X,78H REPLACE ARRXY(10) WITH ABIG AND REPLACE TENTH PLACE IN
+     3 OTHER ARRAYS ALSO.)
+      GO TO 28
+C
+   48 DO 481 I=1,NUM
+  481 ARRDV(I) = CONVER*ARRDV(I)
+C        ****
+C       AT DO 50
+C       AFTER ST 48 EXAMINE FOR LACK OF SIGNIFICANT ACCEL. IMPLIES
+C      STATIONARY OBJECT. RETURN NUM=0.  IN SUBR OUT2,NUM=0 DELETES VDI
+      DO 50 I=1,NUM
+      IF(ARRXY(I) - 1.0) 50,50,52
+   50 CONTINUE
+      NUM = 0
+      GO TO 71
+C        ****
+   52 DO 70 I=1,NUM
+      IF(ARRY(I)) 63,61,64
+   61 IF(ARRX(I)) 64,62,64
+   62 ARRPSI(I) = 0.0
+      NPSITM= 6
+      GO TO 70
+   63 PQUAD = TWOPI
+      GO TO 65
+   64 PQUAD = 0.0
+   65 PSITEM = ATAN2(ARRY(I),ARRX(I))
+      ARRPSI(I) = PSITEM + PQUAD
+      NPSITM = ARRPSI(I)/PIO6 + 6.5
+      IF(NPSITM - 12) 70,70,69
+   69 NPSITM = NPSITM - 12
+   70 NARRPS(I) = NPSITM
+   71 RETURN
+      END
+      SUBROUTINE DELTAV (TMM,TMMP,AX,AY,AC,ACP,DVS,ACTS,IAC,ABIG)
+C      SIMULATION MODEL OF AUTOMOBILE COLLISIONS - SMAC
+C      CALLED EVERY INTERVAL AT BEGINNING OF SAVMAX, SOMETIMES CALLED
+C      AGAIN IN THAT INTERVAL AFTER 'STORE' IN SAVMAX.
+C      IAC = 3,2,1,0,-1,-2,-3,-7,-8,-9,-10
+C      ABIG IS NEG ONLY AT BEGINNING UNTIL AC IS .GT.1.0 ONCE.
+      IF(IAC) 3,7,7
+    3 IF(IAC + 6) 7,7,4
+    4 IF(AC - 1.0) 7,7,5
+    5 IF(ABIG) 7,6,6
+    6 IAC = IAC-6
+      RETURN
+C
+    7 ACX = AC
+      ACPX =ACP
+      IACX = IAC
+      ACTSX = ACTS
+      IPLUS =0
+   15 IF(IACX) 20,20,36
+   20 IF(AX) 22,24,22
+   22 ABSAC = ABS(AY/AX)
+      IF(ABSAC - 1.23) 26,26,24
+   24 IACT = 3
+      ACTST = SIGN(1.0,AY)
+      GO TO 31
+   26 IF(ABSAC - 0.84) 30,28,28
+   28 IACT = 1
+      ACTST = SIGN(1.0,AX*AY)
+      GO TO 31
+   30 IACT = 2
+      ACTST = SIGN(1.0,AX)
+   31 IAC = IACT
+      ACTS = ACTST
+      IF(IACX + 10) 321,32,321
+C      AC MUST BE .GT.1.0 HERE     FLIP (-10) WAS SET IN  CALL IN THIS I
+   32 ACPX = 0.0
+      GO TO 48
+  321 IF(IACX + 6) 322,323,323
+  322 IACX =  IACX + 6
+      GO TO 324
+  323 IF(IACX) 324,325,325
+  324 IACX = - IACX
+      IPLUS = 1
+C
+  325 IF(AC - 1.0) 326,326, 36
+  326 IF(ACP - 1.0) 327,327, 36
+  327 IF(IAC) 329,329,328
+  328 IAC = -IAC
+  329 RETURN
+C
+C
+C      USE PREVIOUSLY SET INDICATORS
+C      IACX = 1,2,3
+   36 IF(IACX - 1) 40,38,40
+   38 IF(ACTSX - SIGN(1.0,AX*AY)) 46,48,46
+   40 IF(IACX - 2) 44,42,44
+   42 IF(ACTSX - SIGN(1.0,AX)) 46,48,46
+   44 IF(ACTSX - SIGN(1.0,AY)) 46,48,46
+C      AT ST 46 NO MATCH
+   46 IF(IPLUS) 47,47,475
+   47 IF(ABIG) 475,470,470
+  470 IAC = -10
+      ACX = 0.0
+      GO TO 48
+  475 ACPX = 0.0
+      IPLUS = 0
+   48 DVS = DVS + 0.5*(ACX + ACPX)*(TMM-TMMP)
+      IF(IAC) 50,49,49
+   49 IF(AC -1.0) 327,327,50
+   50 RETURN
+      END
+C      SUBROUTINE RNGKT1(INIT,N,/X/,/H/,YSP,YP)
+      SUBROUTINE RNGKT1(INIT,N,X,H,YSP,YP)
+C        AUXILIARY SUBROUTINE  FROM CAL PROGRAM LIBRARY, MARCH 1971
+C        SUBROUTINE RNGKT1 (CU0068)
+C***********************************************************************
+C*                                                                     *
+C*                        SUBROUTINE RNGKT1                            *
+C*                             CU 0068                                 *
+C*                                                                     *
+C*    PURPOSE                                                          *
+C*       HYBRID PRECISION (SINGLE PRECISION LINKAGES, BUT DOUBLE       *
+C*       PRECISION INTERNAL COMPUTATION)  RUNGE KUTTA INTEGRATION      *
+C*       (BLUM'S MODIFICATION), 4TH-ORDER, FOR UP TO AND INCLUDING     *
+C*       30 FIRST-ORDER DIFFERENTIAL EQUATIONS.                        *
+C*                                                                     *
+C*    USAGE                                                            *
+C*       CALL RNGKT1 (INIT,N,X,H,Y,YP)                                 *
+C*                                                                     *
+C*    DESCRIPTION OF PARAMETERS                                        *
+C*       INIT  =1  FOR INITIALIZATION,                                 *
+C*             =2 FOR INTEGRATE ONE STEP                               *
+C*       N     NUMBER OF FIRST-ORDER DIFFERENTIAL EQUATIONS            *
+C*       X     INDEPENDENT VARIABLE (SINGLE PRECISION)                 *
+C*       H     STEP SIZE (SINGLE PRECISION)                            *
+C*       Y     ARRAY OF DEPENDENT VARIABLES (SINGLE PRECISION)         *
+C*       YP    ARRAY OF DERIVATIVES OF Y WRT X (SINGLE PRECISION)      *
+C*                                                                     *
+C*    REMARKS                                                          *
+C*       USER MUST SUPPLY A SUBROUTINE DAUX, SUCH THAT 'CALL DAUX'     *
+C*       (WITHOUT EXPLICIT ARGUMENTS) CAUSES THE YP VALUES TO BE       *
+C*       CALCULATED   USING X AND VALUES FROM THE Y ARRAY.             *
+C*                                                                     *
+C*       INITIALIZATION (INIT = 1) IS REQUIRED AFTER USER SETS         *
+C*       INITIAL VALUES OF X AND THE Y-ARRAY.  RE-INITIALIZATION       *
+C*       IS NOT NECESSARY FOR CHANGES IN STEP SIZE, H.                 *
+C*                                                                     *
+C*    SUBROUTINES AND FUNCTION SUBPROGRAMS REQUIRED                    *
+C*       DAUX     (SEE PREVIOUS REMARKS)                               *
+C*                                                                     *
+C*    METHOD                                                           *
+C*       THE E.K. BLUM MODIFICATION OF THE RUNGE-KUTTA FOURTH-         *
+C*       ORDER METHOD IS USED. SEE                                     *
+C*           'MATHEMATICS OF COMPUTATION', APRIL, 1962  PP 176-187     *
+C*                                                                     *
+C*    AUTHOR DATE                                                      *
+C*       W. FRYER                                                      *
+C*       CORNELL AERO. LAB                                             *
+C*       OCTOBER, 1966                                                 *
+C*                                                                     *
+C*       NOTE. CODING IS ADAPTED FROM SQUARE PARTEE                    *
+C*             INTEGRATOR PROGRAMS PINT1 AND DINT.                     *
+C*             DECKS CU0053, CU0054.                                   *
+C*                                                                     *
+C***********************************************************************
+C
+C
+      REAL YSP(1), YP(1)
+      DOUBLE PRECISION P(30),Q(30),X0,Y(30),HD
+C
+      GO TO (4,8), INIT
+    4 CALL DAUX
+      DO 5  I=1,N
+    5 Y(I) = YSP(I)
+      X0 = X
+      RETURN
+C
+    8 HD = H
+      DO 10 I=1,N
+      P(I) = HD*YP(I)
+      Y(I) = Y(I) + 0.5D0*P(I)
+      YSP(I) = Y(I)
+   10 Q(I) = P(I)
+C
+      X = X0 + 0.5D0*HD
+      CALL DAUX
+C
+      DO 20 I=1,N
+      P(I) = HD*YP(I)
+      Y(I) = Y(I) + 0.5D0*(P(I)-Q(I))
+      YSP(I) = Y(I)
+   20 Q(I) = Q(I)/6.0D0
+C
+      CALL DAUX
+C
+      DO 30 I = 1,N
+      P(I) = HD*YP(I) - 0.5D0*P(I)
+      Y(I) = Y(I) + P(I)
+      YSP(I) = Y(I)
+   30 Q(I) = Q(I) - P(I)
+C
+      X0 = X0 + HD
+      X = X0
+      CALL DAUX
+C
+      DO 40 I = 1,N
+      P(I) = HD*YP(I) + (P(I)+P(I))
+      Y(I) = Y(I) + Q(I) + P(I)/6.0D0
+   40 YSP(I) = Y(I)
+C
+      CALL DAUX
+C
+      RETURN
+      END
+      SUBROUTINE DAUX
+C      SIMULATION MODEL OF AUTOMOBILE COLLISIONS -SMAC
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON/INTG/NEQ,T,DT,VAR(12),DER(12)
+      EQUIVALENCE (VAR(1),XCP1),(VAR(2),YCP1),(VAR(3),PSI1),
+     1            (VAR(4),PSI1D),(VAR(5),U1),(VAR(6),V1),
+     2            (VAR(7),XCP2),(VAR(8),YCP2),(VAR(9),PSI2),
+     3            (VAR(10),PSI2D),(VAR(11),U2),(VAR(12),V2)
+      EQUIVALENCE (DER(1),DXCP1),(DER(2),DYCP1),(DER(3),DPSI1),
+     1            (DER(4),DPSI1D),(DER(5),DU1),(DER(6),DV1),
+     2            (DER(7),DXCP2),(DER(8),DYCP2),(DER(9),DPSI2),
+     3            (DER(10),DPSI2D),(DER(11),DU2),(DER(12),DV2)
+      COMMON/INPT/  T0,TF,DTTRA0,DTCOL0,DTCLT0,DTPRN0,UVMIN,PSIDMN,FVEH0
+     1             ,XCP10,YCP10,PSI10,PSI1D0,U10,V10,
+     2              XCP20,YCP20,PSI20,PSI2D0,U20,V20,
+     3              A1,B1,TR1,FIZ1,FM1,PSIR10,XF1,XR1,YS1,
+     4              A2,B2,TR2,FIZ2,FM2,PSIR20,XF2,XR2,YS2,
+     5              CSTFI(8),TBTQ1,TETQ1,TINCQ1,NTBLQ1,NTQ1,
+     6              TBTQ2,TETQ2,TINCQ2,NTBLQ2,NTQ2,TII(8,201),
+     7              TBPSF1,TEPSF1,TINCP1,NTBLP1,NPSF1,
+     8              TBPSF2,TEPSF2,TINCP2,NTBLP2,NPSF2,PSIFI(4,201),
+     9              XBP(2),YBP(2),XMU1,XMU2,CMU
+      COMMON/INPT/  DELPS0,DELRO0,ALAMB,ZETAV,AKV(2) ,AMU,C0,C1,C2,
+     1              PSLM10,PSLM20,PSLM30,PSLM40,PSLM50,PSLM60,PSLM70,
+     2              PSLM80,HED(40),DADE(3),XINPUT(9)
+      COMMON/INTGR/JCC(4),JCOR(4),NPSIB,IPSIB0,IPSIB,IBB,IFF,NDTAB,
+     1             I9,J9(361,2),  NPSJB,IPSJB,I3,ILAST,IL,IND1,IND2,INDI
+     2             ,INDJ,ISTOP,ITZER1,ITZER2,IPZER1,IPZER2,ICOUNT,INDXB,
+     3             ICOLLP,ICOLL,IQ,IND,IVEH,LL,ICTVDI,ITCOL,ITFLG1,
+     4             ITFLG2,NWRDB1,NWRDE1,NWRDB2,NWRDE2,ICOLAC
+C             IN COMMON /COMP/ DO NOT DISTURB THE ORDER OF THE VARIABLES
+C                              WHICH ARE EQUIVALENCED TO ARRAYS.
+      COMMON/COMP/  DTTRAJ,DTCOLL,DTCOLT,DTPRNT,UVMN2,PSIDMA,TPRINT,DTP,
+     1              U1V1SQ,U2V2SQ,DELPSI,DELPST,DELPS2,DELRHO,
+     2              PSILM1,PSILM2,PSILM3,PSILM4,PSILM5,PSILM6,PSILM7,
+     3              PSILM8,EJJ(4,2),GJJ(4,2),C1OC2,PSCC,PSIR1,PSIR2,
+     4             XCMXC1,XCMXC2,YCMYC1,YCMYC2,SPSI1,SPSI2,CPSI1,CPSI2,
+     5             XCPI,YCPI,PSII,XCPJ,YCPJ,PSIJ,XCMXC,YCMYC,SPSIJ,
+     6             CPSIJ,XFI,XRI,YSI,XFJ,XRJ,YSJ,AKVI,AKVJ,EJ,GJ,
+     7             XPJ(4),YPJ(4),ANGYX,SPAN,PSIBPI(4),PSIBPB,PSIBPF,
+     8             FNPSIB,PSIBB,PSIB,PSFMPS,SCPSIB,CSPSIB,
+     9             RHOBI,RHOBIN(4),PSIBIJ,SPSBIJ,CPSBIJ,XBIJ,YBIJ,PSJTB
+      COMMON/COMP/ PSIBPJ,FNPSJB,PSIBJ,RHOBJ,XYJSQR,SPSIB,CPSIB,XBI,YBI,
+     1         PRESI,PRESJ,XYSR,DELTA,CRHO,RHOBIC,RHOBMX,RHOBIT,RHOBT,
+     2             SPSI21,CPSI21,X2TEM,Y2TEM,XX,YY,PAV,XXYYSR,FN1,SPSF,
+     3             CPSF,X1AV,Y1AV,XYAVSR,X2TERM,Y2TERM,SPS21F,CPS21F,
+     4             X2AV,Y2AV,VT1AV,VT2AV,VTMVT,FRICT,FNX1,FNY1,FNN1,
+     5             FNX2,FNY2,FNN2,SFX1,SFY1,SFN1,SFX2,SFY2,SFN2,
+     6              SFX1C,SFX2C,SFY1C,SFY2C,SFN1C,SFN2C,
+     7              SFX1T,SFX2T,SFY1T,SFY2T,SFN1T,SFN2T, TCOL,TEND,
+     8              TREST1,TREST2,TCOLS1,TCOLS2,P1TEM,P2TEM,U1V1E,U2V2E,
+     9              EXTRA(10)
+      COMMON/COMPT/ W(8),XWP(8),YWP(8),FLAGW(8),PSIW(8),TQW(8),
+     1             TFX,TFY,TMOM,PSIRR,COEF,COEF1,COEF2,TRD2,TRD21,TRD22,
+     2             XBMXB,FNUM,A,B,FIZ,FMASS,XC,YC,U,V,PSIC,PSICD,UD2,
+     3             SGNU,SGNI,AOMB,CSPSIC,SNPSIC,TRCPSC,TRSPSC,TRPSCD,
+     4             XI,XW,YW,SX,SY,S,XPP,YPP,RHO,RHOP,XMUS,XMU,PSI,XNUM,
+     5             XDEN,RATIO,ALFA,F,TIF,FC,FCOS,SMAL,FSMX,FS,BETB,FX,FY
+     6             ,CSPSI,SNPSI,XCXC,YCYC,SPJ,CPJ,SPIJ,CPIJ,XFJJ,XRJJ,
+     7              YSJJ,EJJI,GJJI,XICORJ,YICORJ,NTQ,TBTQ,TETQ,TINCRQ,
+     8             NPSF,TBPSF,TEPSF,TINCRP
+      COMMON/TAB/  TRHOB(361,2),TROBMX(361,2),TPSIB(361,2),
+     1             TCPSIB(361,2),TSPSIB(361,2),TXB1(100),TYB1(100),
+     2             TPSB1(100),TPRES1(100)
+      DIMENSION   XCMXCI(2),YCMYCI(2),SPSII(2),CPSII(2),PSLM0(8),PSLM(8)
+      EQUIVALENCE (XCMXCI(1),XCMXC1),(YCMYCI(1),YCMYC1),(SPSII(1),SPSI1)
+     1           ,(CPSII(1),CPSI1),(PSLM0(1),PSLM10),(PSLM(1),PSILM1)
+C
+      IF(ISTOP.NE. 0) RETURN
+      SFX1 = 0.0
+      SFY1 = 0.0
+      SFN1 = 0.0
+      SFX1C = 0.0
+      SFY1C = 0.0
+      SFN1C = 0.0
+      SFX1T = 0.0
+      SFY1T = 0.0
+      SFN1T = 0.0
+      SPSI1     = SIN(PSI1)
+      CPSI1   = COS(PSI1)
+      IF(IVEH) 5,7,5
+    5 SFX2 = 0.0
+      SFY2 = 0.0
+      SFN2 = 0.0
+      SFX2C = 0.0
+      SFY2C = 0.0
+      SFN2C = 0.0
+      SFX2T = 0.0
+      SFY2T = 0.0
+      SFN2T = 0.0
+      SPSI2     = SIN(PSI2)
+      CPSI2     = COS(PSI2)
+      XCMXC1    = XCP1 - XCP2
+      XCMXCI(2) = - XCMXC1
+      YCMYC1    = YCP1 - YCP2
+      YCMYCI(2) = - YCMYC1
+    7 CALL TRAJ
+      IF(IVEH)  9,20,9
+    9 IF (ICOLL) 10,15,10
+   10 CALL COLL
+      SFX1 = SFX1T + SFX1C
+      SFY1 = SFY1T + SFY1C
+      SFN1 = SFN1T + SFN1C
+      SFX2 = SFX2T + SFX2C
+      SFY2 = SFY2T + SFY2C
+      SFN2 = SFN2T + SFN2C
+      GO TO 25
+   15 SFX2 = SFX2T
+      SFY2 = SFY2T
+      SFN2 = SFN2T
+   20 SFX1 = SFX1T
+      SFY1 = SFY1T
+      SFN1 = SFN1T
+C             SET UP DERIVATIVES FOR RUNGE-KUTTA INTEGRATION
+      IF(IVEH) 25,27,25
+   25 DPSI2D = SFN2/FIZ2
+      DPSI2  = PSI2D
+      DU2  =  SFX2/FM2 +  V2*PSI2D
+      DV2  =  SFY2/FM2 -  U2*PSI2D
+      DXCP2  =  U2*CPSI2 - V2*SPSI2
+      DYCP2  =  U2*SPSI2 + V2*CPSI2
+   27 DPSI1D = SFN1/FIZ1
+      DPSI1  = PSI1D
+      DU1  =  SFX1/FM1 +  V1*PSI1D
+      DV1  =  SFY1/FM1 -  U1*PSI1D
+      DXCP1 =   U1*CPSI1 - V1*SPSI1
+      DYCP1 =   U1*SPSI1 + V1*CPSI1
+      RETURN
+      END

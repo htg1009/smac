@@ -1,0 +1,646 @@
+      SUBROUTINE TRAJ
+C      SIMULATION MODEL OF AUTOMOBILE COLLISIONS -SMAC
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON/INTG/NEQ,T,DT,VAR(12),DER(12)
+      EQUIVALENCE (VAR(1),XCP1),(VAR(2),YCP1),(VAR(3),PSI1),
+     1            (VAR(4),PSI1D),(VAR(5),U1),(VAR(6),V1),
+     2            (VAR(7),XCP2),(VAR(8),YCP2),(VAR(9),PSI2),
+     3            (VAR(10),PSI2D),(VAR(11),U2),(VAR(12),V2)
+      EQUIVALENCE (DER(1),DXCP1),(DER(2),DYCP1),(DER(3),DPSI1),
+     1            (DER(4),DPSI1D),(DER(5),DU1),(DER(6),DV1),
+     2            (DER(7),DXCP2),(DER(8),DYCP2),(DER(9),DPSI2),
+     3            (DER(10),DPSI2D),(DER(11),DU2),(DER(12),DV2)
+      COMMON/INPT/  T0,TF,DTTRA0,DTCOL0,DTCLT0,DTPRN0,UVMIN,PSIDMN,FVEH0
+     1             ,XCP10,YCP10,PSI10,PSI1D0,U10,V10,
+     2              XCP20,YCP20,PSI20,PSI2D0,U20,V20,
+     3              A1,B1,TR1,FIZ1,FM1,PSIR10,XF1,XR1,YS1,
+     4              A2,B2,TR2,FIZ2,FM2,PSIR20,XF2,XR2,YS2,
+     5              CSTFI(8),TBTQ1,TETQ1,TINCQ1,NTBLQ1,NTQ1,
+     6              TBTQ2,TETQ2,TINCQ2,NTBLQ2,NTQ2,TII(8,201),
+     7              TBPSF1,TEPSF1,TINCP1,NTBLP1,NPSF1,
+     8              TBPSF2,TEPSF2,TINCP2,NTBLP2,NPSF2,PSIFI(4,201),
+     9              XBP(2),YBP(2),XMU1,XMU2,CMU
+      COMMON/INPT/  DELPS0,DELRO0,ALAMB,ZETAV,AKV(2) ,AMU,C0,C1,C2,
+     1              PSLM10,PSLM20,PSLM30,PSLM40,PSLM50,PSLM60,PSLM70,
+     2              PSLM80,HED(40),DADE(3),XINPUT(9)
+C
+      COMMON /OPTIONS/ IOPTION,DTINT,STEPPSI,STEPDT,SINPSI,SINFREQ,
+     1                 GAIN,DISLKAHD,DW1F,DW1R,DW2F,DW2R
+C
+      COMMON /OPTIONS2/ IOPT1,IOPT2
+C
+      COMMON/TRAJEC/ ITRAJ,XCIR,YCIR,RWYRAD,XYTB(2,201),DLAT1,DLAT2
+     1               ,DYAW1,DYAW2
+C
+      COMMON/INTGR/JCC(4),JCOR(4),NPSIB,IPSIB0,IPSIB,IBB,IFF,NDTAB,
+     1             I9,J9(361,2),  NPSJB,IPSJB,I3,ILAST,IL,IND1,IND2,INDI
+     2             ,INDJ,ISTOP,ITZER1,ITZER2,IPZER1,IPZER2,ICOUNT,INDXB,
+     3             ICOLLP,ICOLL,IQ,IND,IVEH,LL,ICTVDI,ITCOL,ITFLG1,
+     4             ITFLG2,NWRDB1,NWRDE1,NWRDB2,NWRDE2,ICOLAC
+C      IN COMMON /COMP/ DO NOT DISTURB THE ORDER OF THE VARIABLES
+C                       WHICH ARE EQUIVALENCED TO ARRAYS.
+      COMMON/COMP/  DTTRAJ,DTCOLL,DTCOLT,DTPRNT,UVMN2,PSIDMA,TPRINT,DTP,
+     1              U1V1SQ,U2V2SQ,DELPSI,DELPST,DELPS2,DELRHO,
+     2              PSILM1,PSILM2,PSILM3,PSILM4,PSILM5,PSILM6,PSILM7,
+     3              PSILM8,EJJ(4,2),GJJ(4,2),C1OC2,PSCC,PSIR1,PSIR2,
+     4             XCMXC1,XCMXC2,YCMYC1,YCMYC2,SPSI1,SPSI2,CPSI1,CPSI2,
+     5             XCPI,YCPI,PSII,XCPJ,YCPJ,PSIJ,XCMXC,YCMYC,SPSIJ,
+     6             CPSIJ,XFI,XRI,YSI,XFJ,XRJ,YSJ,AKVI,AKVJ,EJ,GJ,
+     7             XPJ(4),YPJ(4),ANGYX,SPAN,PSIBPI(4),PSIBPB,PSIBPF,
+     8             FNPSIB,PSIBB,PSIB,PSFMPS,SCPSIB,CSPSIB,
+     9             RHOBI,RHOBIN(4),PSIBIJ,SPSBIJ,CPSBIJ,XBIJ,YBIJ,PSJTB
+      COMMON/COMP/ PSIBPJ,FNPSJB,PSIBJ,RHOBJ,XYJSQR,SPSIB,CPSIB,XBI,YBI,
+     1         PRESI,PRESJ,XYSR,DELTA,CRHO,RHOBIC,RHOBMX,RHOBIT,RHOBT,
+     2             SPSI21,CPSI21,X2TEM,Y2TEM,XX,YY,PAV,XXYYSR,FN1,SPSF,
+     3             CPSF,X1AV,Y1AV,XYAVSR,X2TERM,Y2TERM,SPS21F,CPS21F,
+     4             X2AV,Y2AV,VT1AV,VT2AV,VTMVT,FRICT,FNX1,FNY1,FNN1,
+     5             FNX2,FNY2,FNN2,SFX1,SFY1,SFN1,SFX2,SFY2,SFN2,
+     6              SFX1C,SFX2C,SFY1C,SFY2C,SFN1C,SFN2C,
+     7              SFX1T,SFX2T,SFY1T,SFY2T,SFN1T,SFN2T, TCOL,TEND,
+     8              TREST1,TREST2,TCOLS1,TCOLS2,P1TEM,P2TEM,U1V1E,U2V2E,
+     9              EXTRA(10)
+      COMMON/COMPT/ W(8),XWP(8),YWP(8),FLAGW(8),PSIW(8),TQW(8),
+     1             TFX,TFY,TMOM,PSIRR,COEF,COEF1,COEF2,TRD2,TRD21,TRD22,
+     2             XBMXB,FNUM,A,B,FIZ,FMASS,XC,YC,U,V,PSIC,PSICD,UD2,
+     3             SGNU,SGNI,AOMB,CSPSIC,SNPSIC,TRCPSC,TRSPSC,TRPSCD,
+     4             XI,XW,YW,SX,SY,S,XPP,YPP,RHO,RHOP,XMUS,XMU,PSI,XNUM,
+     5             XDEN,RATIO,ALFA,F,TIF,FC,FCOS,SMAL,FSMX,FS,BETB,FX,FY
+     6             ,CSPSI,SNPSI,XCXC,YCYC,SPJ,CPJ,SPIJ,CPIJ,XFJJ,XRJJ,
+     7              YSJJ,EJJI,GJJI,XICORJ,YICORJ,NTQ,TBTQ,TETQ,TINCRQ,
+     8             NPSF,TBPSF,TEPSF,TINCRP
+      COMMON/TAB/  TRHOB(361,2),TROBMX(361,2),TPSIB(361,2),
+     1             TCPSIB(361,2),TSPSIB(361,2),TXB1(100),TYB1(100),
+     2             TPSB1(100),TPRES1(100)
+      DIMENSION   XCMXCI(2),YCMYCI(2),SPSII(2),CPSII(2),PSLM0(8),PSLM(8)
+      EQUIVALENCE (XCMXCI(1),XCMXC1),(YCMYCI(1),YCMYC1),(SPSII(1),SPSI1)
+     1           ,(CPSII(1),CPSI1),(PSLM0(1),PSLM10),(PSLM(1),PSILM1)
+      DATA BLNK/1H /,STAR/1H*/
+C
+      IF(ISTOP.NE. 0) RETURN
+      XC = XCP1
+      YC = YCP1
+      U = U1
+      V = V1
+      PSIC = PSI1
+      CSPSIC = CPSI1
+      SNPSIC = SPSI1
+      PSICD = PSI1D
+      A = A1
+      B = B1
+      COEF = COEF1
+      TRD2 = TRD21
+      PSIRR = PSIR1
+C
+C       AFTER COLLISION, REAR WHEELS OF VEHICLE 1 OFFSET BY DW1R
+C
+      IF ( ICOLL .NE. 0 ) PSIRR = PSIR1 + DW1R*RAD
+C
+      FIZ = FIZ1
+      FMASS = FM1
+      TBPSF = TBPSF1
+      TEPSF = TEPSF1
+      TINCRP = TINCP1
+      NPSF = NPSF1
+      TBTQ = TBTQ1
+      TETQ = TETQ1
+      TINCRQ = TINCQ1
+      NTQ = NTQ1
+      KK = 0
+      II = 0
+   30 SGNU = SIGN(1.0,U)
+      UD2 = ABS(0.5*U)
+      TRCPSC  = CSPSIC * TRD2
+      TRSPSC  = SNPSIC * TRD2
+      TRPSCD = PSICD * TRD2
+      TFX = 0.0
+      TFY = 0.0
+      TMOM = 0.0
+      AOMB = A
+      SGNI = 1.0
+C          LOOP FOR WHEELS
+C        RF = 1,  LF = 2,  RR = 3,  LR = 4
+      DO 105 I=1,4
+      III = I + II
+      SGNI = -1.0*SGNI
+      IF(I - 2) 32,32,31
+   31 AOMB = -B
+   32 XW = XC + AOMB*CSPSIC + SGNI * TRSPSC
+      YW = YC + AOMB*SNPSIC - SGNI * TRCPSC
+      XWP(III) = XW
+      YWP(III) = YW
+      IF(INDXB) 35,37,36
+   35 ISTOP = 15
+      WRITE(NOUT,6035) ISTOP
+ 6035 FORMAT( 8H0 ISTOP=,I4,17H, INDXB  NEGATIVE)
+      RETURN
+   36 XPP= FNUM *XW/(YW - XI*XW)
+   37 YPP=YW*XPP/XW
+      SX = U + SGNI*TRPSCD
+      SY = V + AOMB*PSICD
+      RHO = SQRT(XW*XW + YW*YW)
+      RHOP=SQRT(XPP*XPP + YPP*YPP)
+      IF(RHO - RHOP) 38,38,39
+   38 XMUS = XMU1
+      GO TO 40
+   39 XMUS = XMU2
+   40 S   = SQRT( SX*SX + SY*SY)
+      XMU = XMUS*(1.0-CMU*S)
+      IF(I-2) 42,42,41
+   41 PSI = PSIRR
+      GO TO 45
+   42 IF(NPSF-1) 43,43,44
+   43 PSI = 0.0
+C      NO STEER TABLES
+      GO TO 45
+   44 K = I + KK
+C      Original program uses a routine of 
+C      interpolation to get steering angle from given table
+C
+C      In the new routine, the steering anlge is determined
+C      by the selected option, thus a new call needs
+C      to be inserted here.  The new subroutine should return a
+C      a steering angle
+C
+C      If KK = 0 (I = 1,2) the routine is calculating for Vehicle 1
+C      If KK = 2 (I = 1,2) the routine is calculating for Vehicle 2
+C
+  144 CONTINUE
+      IF (IOPTION .EQ. 0) THEN
+         CALL INTRPV(ND4,K,PSIFI,TBPSF,TEPSF,TINCRP,T,PSI)
+      ELSEIF (IOPTION .EQ. 1) THEN
+         CALL STEPSTR(T, PSI)
+      ELSEIF (IOPTION .EQ. 2) THEN
+         CALL SINSTR(T, PSI)
+      ELSEIF (IOPTION .GT. 2 .AND. IOPTION .LT. 5) THEN
+         CALL STRCTRL(T,K,XC,YC,PSIC,U,V,PSICD,PSI)
+      ENDIF
+C
+C     PSI IN DEGREES, CONVERTED TO RADIAN HERE
+C
+      IF (K .LT. 3 .AND. IOPT1 .EQ. 0) THEN
+         PSI = 0.0
+      ELSEIF (K .GE. 3 .AND. IOPT2 .EQ. 0) THEN
+         PSI =0.0
+      ENDIF
+
+      PSI = PSI * RAD
+   45 PSIW(III) = PSI
+      XNUM = SY
+      XDEN= ABS(SX)
+      IF(XDEN)55,50,55
+   50 IF(XNUM)54,52,54
+   52 RATIO = 0.0
+      GO TO 56
+   54 RATIO = 1.57
+      GO TO 56
+   55 RATIO = ATAN2(XNUM,XDEN)
+   56 ALFA = RATIO - PSI*SGNU
+   57 F = XMU * W(III)
+      IF(NTQ-1) 58,58,59
+   58 TIF = 0.0
+C      NO TORQUE TABLES
+      GO TO 60
+   59 CALL INTRPV (ND8,III,TII,TBTQ,TETQ,TINCRQ,T,TIF)
+   60 TQW(III) = TIF
+      IF(TIF) 70,61,62
+   61 FC = 0.0
+      GO TO 80
+   62 IF(TIF-F) 64,64,66
+   64 FC = TIF
+      GO TO 80
+   66 FC = F
+      GO TO 80
+   70 FCOS = F*COS(ALFA)
+      IF(UD2-1.0) 72,73,73
+   72 SMAL = UD2
+      GO TO 74
+   73 SMAL = 1.0
+   74 IF( ABS(TIF) - FCOS) 76,76,78
+   76 FC = TIF*SGNU*SMAL
+      GO TO 80
+   78 FC = -FCOS*SGNU*SMAL
+   80 IF( ABS(FC) - (ABS(F) -1.0)) 86,84,84
+   84 FS = 0.0
+      FLAGW(III) = STAR
+      GO TO 100
+   86 IF(ABS(U) - 0.5) 88,90,90
+   88 IF(ABS(V) - 0.5) 84,90,90
+   90 FSMX = SQRT(F*F - FC*FC)
+      BETB = CSTFI(III) * ALFA /FSMX
+      IF(ABS(BETB)-3.0)94,92,92
+   92 FS = FSMX * SIGN(1.0,BETB)
+      FLAGW(III) = STAR
+      GO TO 100
+   94 FS = FSMX*BETB*(BETB*BETB/27.0 - ABS(BETB)/3.0 +1.0)
+      FLAGW(III) = BLNK
+  100 CSPSI = COS(PSI)
+      SNPSI = SIN(PSI)
+      FY = FS*CSPSI + FC*SNPSI
+      FX = -FS*SNPSI + FC*CSPSI
+      TFX = TFX + FX
+      TFY = TFY + FY
+      TMOM = TMOM  + SGNI * TRD2 * FX   + AOMB * FY
+  105 CONTINUE
+C           END OF LOOP FOR WHEELS
+      IF(II) 115,110,115
+  110 SFX1T = TFX
+      SFY1T = TFY
+      SFN1T = TMOM
+      IF (IVEH) 112,117,112
+  112 XC = XCP2
+      YC = YCP2
+      U = U2
+      V = V2
+      PSIC = PSI2
+      CSPSIC = CPSI2
+      SNPSIC = SPSI2
+      PSICD = PSI2D
+      A = A2
+      B = B2
+      COEF = COEF2
+      TRD2 = TRD22
+      PSIRR = PSIR2
+C
+C       AFTER COLLISION, REAR WHEELS OF VEHICLE 2,
+C       PSIR2, IS OFFSET BY DELTAWL
+C
+      IF ( ICOLL .NE. 0 ) PSIRR = PSIR2 + DW2R*RAD
+C
+      FIZ = FIZ2
+      FMASS = FM2
+      TBPSF = TBPSF2
+      TEPSF = TEPSF2
+      TINCRP = TINCP2
+      NPSF = NPSF2
+      TBTQ = TBTQ2
+      TETQ = TETQ2
+      TINCRQ = TINCQ2
+      NTQ = NTQ2
+      KK = 2
+      II = 4
+      GO TO 30
+  115 SFX2T = TFX
+      SFY2T = TFY
+      SFN2T = TMOM
+  117 RETURN
+      END
+      SUBROUTINE INTRPV(ND,ID,TABLE,XMIN,XMAX,DX,X,Y)
+C      SIMULATION MODEL OF AUTOMOBILE COLLISIONS -SMAC
+C       QUADRATIC
+      DIMENSION TABLE(ND,1)
+    1 XLK = AMIN1(X,XMAX)
+      XLK = AMAX1(XLK,XMIN)
+      N1 = (XLK-XMIN)/DX+1.2
+      N2 = N1+1
+      NT = (XMAX-XMIN)/DX+1.2
+      N0 = N1-1
+    2 IF(N0.GT.0) GO TO 3
+      N0 = N1
+      N1 = N2
+      N2 = N1+1
+    3 IF(N2.LE.NT) GO TO 4
+      N2 = N1
+      N1 = N0
+      N0 = N1-1
+    4 XXX = FLOAT(N0)*DX+XMIN
+      DX2 = DX**2
+      TT1 = TABLE(ID,N1)
+      TT0 = TABLE(ID,N0)
+      A = ( TABLE(ID,N2) -2.0*TT1 + TT0) / (2.0*DX2)
+      B = (TT1 -TT0)/DX -A*(2.0*XXX - DX)
+      C = TT1 -(A*XXX**2 + B*XXX)
+      Y = (A*XLK+B)*XLK+C
+      RETURN
+      END
+C
+C       New subroutine for creating steering input
+C       
+      SUBROUTINE STEPSTR(T,PSI)
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON /OPTIONS/ IOPTION, DTINT, STEPPSI, STEPDT, SINPSI, SINFREQ,
+     1                 GAIN, DISLKAHD, DW1F, DW1R, DW2F, DW2R
+C       STEP FUNCTION STARTS AFTER 0.25 SECOND OF INITIATION
+      IF (T .LE. DTINT ) THEN
+         PSI = 0.0
+      ELSE
+         IF (T .LT. (DTINT+STEPDT) ) THEN
+            PSI = (T-DTINT)/STEPDT*STEPPSI
+         ELSE
+            PSI = STEPPSI
+         ENDIF
+      ENDIF
+      RETURN
+      END
+      SUBROUTINE SINSTR(T,PSI)
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON /OPTIONS/ IOPTION, DTINT, STEPPSI, STEPDT, SINPSI, SINFREQ,
+     1                 GAIN, DISLKAHD, DW1F, DW1R, DW2F, DW2R
+C       SIN FUNCTION STARTS AFTER 0.25 SECOND
+      IF (T .LE. DTINT ) THEN
+         PSI = 0.0
+      ELSE         
+         PSI = SINPSI*SIN(TWOPI*SINFREQ*(T-DTINT))
+      ENDIF
+      RETURN
+      END
+      SUBROUTINE STRCTRL(T,K,X,Y,YAW,U,V,YAWD,PSI)
+      COMMON /OPTIONS/ IOPTION,DTINT,STEPPSI,STEPDT,SINPSI,SINFREQ,
+     1                 GAIN,DISLKAHD,DW1F,DW1R,DW2F,DW2R
+C
+C     CALL SUBROUTINES TO CALCULATE POS, YAW, ONLY WHEN
+C     K = 1 OR 3, I.E. JUST ONCE FOR EACH VEHICLE WITHOUT REPEATING
+C     THE CALCULATION SINCE NUMBERS REMAIN THE SAME FOR BOTH WHEELS
+C
+      IF ( K .EQ. 1 .OR. K .EQ. 3 ) THEN
+C
+C     Call subroutine to find latereal position and yaw deviation
+C
+      CALL DEVIATE(T,K,X,Y,YAW,DEVY)
+C
+C       CALL SUBROUTINE TO GET DESIRED YAW ANGLE
+C
+      CALL YAWCAL(T,K,X,Y,YAW,DESYAW)
+C
+C     Call subroutine to delay information on DEVLAT,YAW,DESYAW
+C     if IOPTION = 4
+C
+C      WRITE(6,*) X,Y,YAW,DEVY,DESYAW
+      IF (IOPTION .EQ. 4) CALL DLY(T,K,DEVY,YAW,DESYAW)
+      ENDIF
+C
+C     Implement control algorithms to calculate steering input
+C     given deviation and desired yaw, and other variables in common
+C     blocks to determine desired steeering angle
+C
+C      WRITE(6,*) X,Y,YAW,DEVY,DESYAW
+      CALL CNTRL(T,K,X,Y,YAW,U,V,YAWD,DEVY,DESYAW,PSI)
+      RETURN
+      END
+C
+C       CALL subroutine to find latereal position deviation
+C
+      SUBROUTINE DEVIATE(T,K,X,Y,YAW,DLAT)
+C
+      COMMON/TRAJEC/ ITRAJ,XCIR,YCIR,RWYRAD,XYTB(2,201),DLAT1,DLAT2
+     1               ,DYAW1,DYAW2
+      COMMON/YCOMP/ FREQA,FREQB,TL1,TL2,YL1,YL2,PYL1,PYL2
+C
+C       IF ITRAJ = 0, STRAIGHT LANE
+C       IF ITRAJ = 1, STRAIGHT LANE FOLLOWED BY CIRCULAR CURVE
+C
+      DUMMY = YAW + T
+      XSUM = 0.0
+      IF ( ITRAJ .EQ. 0 ) THEN
+         DEVY = Y
+         DLAT = DEVY
+         IF ( K .LT. 3 ) DLAT1 = DEVY
+         IF ( K .GT. 2 ) DLAT2 = DEVY
+         RETURN
+      ELSEIF ( ITRAJ .EQ. 1 ) THEN
+         IF ( X .LE. XCIR ) THEN
+            DEVY = Y
+         ELSE
+            DISL = SQRT( (X-XCIR)**2. + (Y-YCIR)**2. )
+            DEVY = RWYRAD - DISL
+         ENDIF
+      ENDIF
+C
+C     K = 1, 2 VEHICLE 1
+C     K = 3, 4 VEHICLE 2
+C       IN CURVED ROAD SITUATIONS, COMPENSATOR IS USED TO
+C       TO ADJUST LATERAL DEVIATION.  LOW-FREQUENCY RANGE
+C       WITH A HIGHER GAIN TO REDUCE STEADY STATE ERROR
+C
+      IF ( K .LT. 3 ) THEN
+C        VEHICLE NO. 1
+         DLAT1 = DEVY
+         IF ( T .NE. TL1 ) THEN
+            DDT = T - TL1
+            XSUM = PYL1 + (1.+FREQB*DDT)*DEVY - YL1
+            PDY = XSUM /(1.+FREQA*DDT)
+            TL1 = T
+            YL1 = DEVY
+            PYL1 = PDY
+         ELSE
+            PDY = PYL1 + DEVY - YL1
+         ENDIF
+      ELSE
+C     K .GT. 2, VEHILCE NO. 2
+         DLAT2 = DEVY
+         IF ( T .NE. TL2 ) THEN
+            DDT = T - TL2
+            XSUM = PYL2 + (1.+FREQB*DDT)*DEVY - YL2
+            PDY = XSUM /(1.+FREQA*DDT)
+            TL2 = T
+            YL2 = DEVY
+            PYL2 = PDY
+         ELSE
+            PDY = PYL2 + DEVY - YL2
+         ENDIF
+      ENDIF
+      DLAT = PDY
+      RETURN
+      END
+C
+C       CALL SUBROUTINE TO GET DESIRED YAW ANGLE
+C       NOTED : DESIRED YAW IS THE ANGLE AT LOOK-AHEAD DISTANCE L
+C
+      SUBROUTINE YAWCAL(T,K,X,Y,YAW,DYAW)
+C
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON/TRAJEC/ ITRAJ,XCIR,YCIR,RWYRAD,XYTB(2,201),DLAT1,DLAT2
+     1               ,DYAW1,DYAW2
+C
+      COMMON /OPTIONS/ IOPTION, DTINT, STEPPSI, STEPDT, SINPSI, SINFREQ,
+     1                 GAIN, DISLKAHD, DW1F, DW1R, DW2F, DW2R
+C
+      COMMON /SNOISE/ YMAG, YFREQ
+C
+C       IF ITRAJ = 0, STRAIGHT LANE
+C       IF ITRAJ = 1, STRAIGHT LANE FOLLOWED BY CIRCULAR CURVE
+C
+C       CALCULATE DESIRED YAW ANGLE AT CURRENT POSITION
+C
+      DUMMY = YAW + T
+      IF ( ITRAJ .EQ. 0 ) THEN
+         DYAW = 0.0
+      ELSEIF ( ITRAJ .EQ. 1 ) THEN
+         IF ( X .LE. XCIR ) THEN
+            DYAW = 0.0
+         ELSE 
+            THETAC = ATAN( (X-XCIR)/(YCIR-Y) )
+            DYAW = THETAC
+         ENDIF
+      ENDIF
+C
+C       THIS SECTION CALCULTAES THE DESIRED YAW ANGLE AT DISLKAHD
+C       AHEAD.
+C
+C      ELSEIF ( ITRAJ .EQ. 1 ) THEN
+C         IF ( X .LE. (XCIR-DISLKAHD) ) THEN
+C            DYAW = 0.0
+C         ELSEIF ( X .GT. XCIR ) THEN
+C            THETAC = ATAN( (X-XCIR)/(YCIR-Y) )
+C            THETAL = DISLKAHD/RWYRAD
+C            DYAW = THETAC + THETAL
+C         ELSE
+C            XL = DISLKAHD - (XCIR-X)
+C            THETAL = XL/RWYRAD
+C            DYAW = THETAL
+      IF ( K .LT. 3 ) THEN
+C         ICAR = 1
+         DYAW1 = DYAW
+      ELSE
+C       K .GT. 2 CAR NO2
+C         ICAR = 2
+         DYAW2 = DYAW
+      ENDIF
+C
+C     ADD NOISE TO YAW ANGLE, ANGLES IN RADIAN
+C
+      DYAW = DYAW + YMAG*SIN(YFREQ*T)
+      RETURN
+      END
+C
+C       SUBROUTINE TO DELAY VALUES OF DEVY, YAW, DESYAW
+C
+      SUBROUTINE DLY(T,K,DY,YAW,DYAW)
+C      COMMON/INTG/NEQ,T,DT,VAR(12),DER(12)
+      COMMON /OPTIONS/ IOPTION,DTINT,STEPPSI,STEPDT,SINPSI,SINFREQ,
+     1                 GAIN,DISLKAHD,DW1F,DW1R,DW2F,DW2R
+      COMMON/DELAY/ DY1L(11),DY2L(11),YAW1L(11),YAW2L(11)
+     1              ,DYAW1L(11),DYAW2L(11),TDGT,DTDGT,IDLY,JDLY
+C
+C     K = 1, 2 VEHICLE 1
+C     K = 3, 4 VEHICLE 2
+C
+C     BEGIN STORAGE OF PREVIOUS VALUES IN AN ARRAY OF 11
+C     WHEN TDGT IS REACHED
+C
+C     INSTEAD OF ROTATING THE ARRAY AROUND, RECORD THE VALUES
+C     IN AN REVOLVING BUFFER AND REMEMBER THE INDEX TO SEARCH
+C
+C       STORE THE CURRENT VALUES IN I POSITION
+C       AND THE RETRIEVED VALUES ARE IN J=I+1 (OR I-10) POSITION
+C       IF J .GT. 10, THEN J = J-10
+C
+C       AFTER EACH RECORDING, INCREASE I BY 1
+C       IF I .GT. 10, I = I-10
+C
+C         WRITE(6,*) I,J,T,TDGT,DTDGT
+C      PAUSE
+      IF (TDGT .GT. (T+0.0001)) GO TO 21
+      I = IDLY
+      J = JDLY
+      IF ( K .LT. 3 ) THEN
+         DY1L(I) = DY
+         YAW1L(I) = YAW
+         DYAW1L(I) = DYAW
+      ELSE
+         DY2L(I) = DY
+         YAW2L(I) = YAW
+         DYAW2L(I) = DYAW
+         I = I + 1
+         IF ( I .GT. 10 ) I = I - 10
+         J = I + 1
+         IF ( J .GT. 10 ) J = J - 10
+         TDGT = TDGT + DTDGT
+         IDLY = I
+         JDLY = J
+      ENDIF
+C      IF ( T .LT. 5 ) GOTO 21
+C         WRITE(6,*) K,I,J,T,TDGT,DTDGT
+C         WRITE(6,*) (DY2L(K),K=1,4)
+C         WRITE(6,*) (DY2L(K),K=5,8)
+C         WRITE(6,*) (DY2L(K),K=9,11)
+C         TPRNT = TPRNT + 10.*DTDGT
+C      PAUSE
+   21 CONTINUE
+C
+C       RETRIEVE VALUES HERE
+C
+C      GOTO 23
+C      WRITE(6,*) 'IT SHOULD NEVER PASS HERE'
+      IF ( K .LT. 3 ) THEN
+         DY = DY1L(J)
+         YAW = YAW1L(J)
+         DYAW = DYAW1L(J)
+      ELSE
+         DY = DY2L(J)
+         YAW = YAW2L(J)
+         DYAW = DYAW2L(J)
+      ENDIF
+   23 CONTINUE
+      RETURN
+      END
+C
+C       SUBROUTINE TO DETERMINE THE STEERING ANGLE
+C
+      SUBROUTINE CNTRL(T,K,X,Y,YAW,U,V,YAWD,DY,DYAW,CNTLPSI)
+C
+      COMMON/CONST/ G,RAD,PI,TWOPI,PIO2,PI32,ND2,ND4,ND8,NIN,NOUT
+      COMMON/INTGR/JCC(4),JCOR(4),NPSIB,IPSIB0,IPSIB,IBB,IFF,NDTAB,
+     1             I9,J9(361,2),NPSJB,IPSJB,I3,ILAST,IL,IND1,IND2,INDI
+     2             ,INDJ,ISTOP,ITZER1,ITZER2,IPZER1,IPZER2,ICOUNT,INDXB,
+     3             ICOLLP,ICOLL,IQ,IND,IVEH,LL,ICTVDI,ITCOL,ITFLG1,
+     4             ITFLG2,NWRDB1,NWRDE1,NWRDB2,NWRDE2,ICOLAC
+C
+      COMMON /OPTIONS/ IOPTION,DTINT,STEPPSI,STEPDT,SINPSI,SINFREQ,
+     1                 GAIN,DISLKAHD,DW1F,DW1R,DW2F,DW2R
+      COMMON/TRAJEC/ ITRAJ,XCIR,YCIR,RWYRAD,XYTB(2,201),DLAT1,DLAT2
+     1               ,DYAW1,DYAW2
+      COMMON/STRRATE/ DTACT,ILMT(4),RLMT,TLST(4),PLAST(4)
+C
+C     K = 1, 2 VEHICLE 1
+C     K = 3, 4 VEHICLE 2
+C
+C       FIRST CONTROL LAW
+C       PSI = - GAIN * ( DY + DISLKAHD*(YAW-DYAW) )
+C               YAW, DYAW IN RADIAN
+C               DY AND LOOK-AHEAD DISTANCE IN METER
+C
+C       IF ITRAJ = 0 (STRAIGHT LANE) AND
+C          ICOLL = 0 (NO COLLISION YET), THEN NO STEERING INPUT
+C
+      CNTLPSI = 0.0
+      IF ( (ITRAJ+ICOLL) .EQ. 0 ) THEN
+         CNTLPSI = 0.0
+      ELSE
+C
+C       CNTLPSI (DIVIDED BY RAD) CONVERTED TO DEGREES HERE
+C       TO BE CONSISTENT WITH OTHER OPTIONS
+C
+         CNTLPSI = - GAIN*(DY*0.0254 + (YAW-DYAW)*DISLKAHD)/RAD
+      ENDIF
+C
+C     CHECK STEERING RATE, IF OVER LIMIT, ADJUSTMENTS ARE MADE
+C
+      IF ( T .GT. TLST(K) ) THEN
+         DDT = T - TLST(K)
+         STRR = (CNTLPSI-PLAST(K))/DDT
+         IF ( (STRR-RLMT) .GT. 0 ) THEN
+            ILMT(K) = 1
+            CNTLPSI = PLAST(K)+ILMT(K)*RLMT*DDT
+         ELSEIF ( (STRR+RLMT) .LT. 0 ) THEN
+            ILMT(K) = -1
+            CNTLPSI = PLAST(K)+ILMT(K)*RLMT*DDT
+         ENDIF
+         TLST(K) = T
+         PLAST(K) = CNTLPSI
+         ILMT(K) = 0
+      ELSE
+         CNTLPSI = PLAST(K)
+      ENDIF
+C
+C       AFTER COLLISION, FRONT WHEELS OF 1ST VEHICLE
+C       OFFSET BY DW1F
+C
+      IF ( K .LT. 3 .AND. ICOLL .NE. 0 ) CNTLPSI = CNTLPSI + DW1F
+C
+C       AFTER COLLISION, FRONT WHEELS OF 2ND VEHICLE
+C       OFFSET BY DW2F
+C
+      IF ( K .GT. 2 .AND. ICOLL .NE. 0 ) CNTLPSI = CNTLPSI + DW2F
+      DUMMY = X+Y+YAW+YAWD+U+V+T
+      RETURN
+      END

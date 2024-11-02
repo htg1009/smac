@@ -1,0 +1,24 @@
+# #### This is a Carmma highway scenario specification file
+
+
+All-Snapshots 2 4
+NumLanes 5
+Data-Version 1
+HighwayLength 2000
+Trajectory 0 0 0 0
+Snapshot 2 
+SnapTags  {Car1}
+
+# Individial tag information
+CarPosition Car1 72.0 44.0 76.0 46.0
+CarInformation Car1 5.92 2 15 0.0
+# End of information on tag Car1
+# End on information on snapshot 2
+Snapshot 4 
+SnapTags  {Car1}
+
+# Individial tag information
+CarPosition Car1 439.0 44.0 443.0 46.0
+CarInformation Car1 35.28 2 15 0.0
+# End of information on tag Car1
+# End on information on snapshot 4

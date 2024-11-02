@@ -1,0 +1,15 @@
+#
+# project-defaults --
+# SHIFT and TkShift defaults for merge simulations
+#
+
+setenv SHIFT_NSTEPS 36000
+setenv SHIFT_ISTEP 0.004
+setenv SHIFT_GUI_DEBUG 
+setenv SHIFT_DEBUG 
+setenv SHIFT_GUI_SERVER "`hostname` 5100 5101"
+# setenv SHIFT_DUMP_SMARTPATH 0
+# setenv SHIFT_SMARTPATH_DATA project.data 
+setenv SHIFT_TKDIR /usr/path/lib/TkShift
+
+# end of file -- project-defaults --

@@ -1,0 +1,47 @@
+#!/usr/sww/bin/wish
+
+proc release {} {
+	set Dir [pwd]/
+	set target_file [open ${Dir}Carmma.tcl w]
+
+	#append header 
+	set header [open ${Dir}header r]
+	while {[gets $header line] >= 0} {
+		puts $target_file $line
+	}
+	
+	close $header 
+
+	ReadAndAppendWithoutHeader $target_file snap.tcl $Dir
+	ReadAndAppendWithoutHeader $target_file file.tcl $Dir
+#	ReadAndAppendWithoutHeader $target_file fileselect.tcl $Dir
+	ReadAndAppendWithoutHeader $target_file animation.tcl $Dir
+	ReadAndAppendWithoutHeader $target_file main.tcl $Dir
+	
+	puts $target_file "CreateMainWindow"
+
+	close $target_file
+
+	destroy . 
+}
+
+proc ReadAndAppendWithoutHeader {target_file source_filename Dir} {
+	set source_file [open ${Dir}${source_filename} r]
+	set flag 0 
+        set count 0 
+
+	# skip the header 
+	while {($flag == 0) && ([gets $source_file line] >= 0) } {
+	if {$count == 35} {set flag 1}
+	set count [expr $count + 1]
+	}
+
+	#now append 
+	while {[gets $source_file line] >= 0} {
+		puts $target_file $line
+	}
+
+	close $source_file 
+}			
+
+release 

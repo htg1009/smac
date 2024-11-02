@@ -1,0 +1,42 @@
+;; -*- Lisp -*-
+(Created-By-Prcs-Version 1 2 1)
+(Project-Description "")
+(Project-Version CARMMA 0 3)
+(Parent-Version CARMMA 0 2)
+
+(Version-Log "the obscure bug with the x-positioning has finally been fixed.  :)  Also
+I prevented the user from closing window that sets vehicle parameters since
+vehicle without a correct parmeters will create problems. 
+")
+(New-Version-Log "")
+(Checkin-Time "Wed, 16 Jul 1997 11:02:01 -0700")
+(Checkin-Login duke)
+(Populate-Ignore ())
+(Project-Keywords)
+(Files
+;; This is a comment.  Fill in files here.
+;; For example:  (prcs/checkout.cc ())
+
+;; Files added by populate at Mon, 14 Jul 1997 12:23:40 -0700:
+
+  (header (CARMMA/0_header 1.1 644))
+  (Makefile (CARMMA/1_Makefile 1.2 644))
+  (animation.tcl (CARMMA/2_animation. 1.2 644))
+  (initialize.tcl (CARMMA/3_initialize 1.2 644))
+  (snap.tcl (CARMMA/4_snap.tcl 1.3 644))
+  (tkAppInit.c (CARMMA/5_tkAppInit. 1.1 644))
+  (tkAppInit.h (CARMMA/6_tkAppInit. 1.1 644))
+  (main.tcl (CARMMA/11_main.tcl 1.2 644))
+  (file.tcl (CARMMA/12_file.tcl 1.2 644))
+  (release (CARMMA/14_release 1.2 744))
+
+;; Files added by populate at Tue, 15 Jul 1997 16:32:56 -0700:
+
+  (docs/docs.html (CARMMA/15_docs.html 1.1 644))
+  (images/view.gif (CARMMA/16_view.gif 1.1 644) :no-keywords)
+  (images/snap.gif (CARMMA/17_snap.gif 1.1 644) :no-keywords)
+  (images/help.gif (CARMMA/18_help.gif 1.1 644) :no-keywords)
+  (images/exit.gif (CARMMA/19_exit.gif 1.1 644) :no-keywords)
+)
+(Merge-Parents)
+(New-Merge-Parents)

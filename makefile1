@@ -1,0 +1,54 @@
+# This is the makefile for compiling the Hwydata, Posvel and smac programs
+  
+CC = gcc
+
+CFLAGS = -c -g
+SRCS = cnstnt.for coll.for damage.for input1.for output1.for smac1.for smacpath.for subsmac.for traj1.for
+OBJS = ${SRCS:.for=.o}
+
+all: Hwydata Posvel smac clean
+
+Hwydata: Hwydata.o
+	${CC} -g -o Hwydata Hwydata.o
+
+Posvel: Posvel.o
+	${CC} -g -o Posvel Posvel.o
+
+smac: ${OBJS}
+	f77 -g -o smac ${OBJS}
+
+Hwydata.o: Hwydata.c
+	${CC} ${CFLAGS} Hwydata.c
+
+Posvel.o: Posvel.c
+	${CC} ${CFLAGS} Posvel.c
+
+cnstnt.o: cnstnt.for
+	f77 ${CFLAGS} cnstnt.for
+
+coll.o: coll.for
+	f77 ${CFLAGS} coll.for
+
+damage.o: damage.for
+	f77 ${CFLAGS} damage.for
+
+input1.o: input1.for
+	f77 ${CFLAGS} input1.for
+
+output1.o: output1.for
+	f77 ${CFLAGS} output1.for
+
+smac1.o: smac1.for
+	f77 ${CFLAGS} smac1.for
+
+smacpath.o: smacpath.for
+	f77 ${CFLAGS} smacpath.for
+
+subsmac.o: subsmac.for
+	f77 ${CFLAGS} subsmac.for
+
+traj1.o: traj1.for
+	f77 ${CFLAGS} traj1.for
+
+clean: 
+	-rm *.o
