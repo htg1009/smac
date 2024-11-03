@@ -46,7 +46,7 @@ Carmma is an animation program with a menu-driven user interface.  It is
 used to animate simulations that have data defined in the highway scenario
 format.  Carmma is executed by typing in the command "Carmma".
 Carmma is described in detail in the Carmma User's Manual, which is located
-at the PATH web site: http://www.path.berkeley.edu(SmartAHS Project).
+at the PATH web site: http://www.path.berkeley.edu(SmartAHSProject).
  
 Source Code for SMAC, Posvel, Hwydata and Carmma
 
